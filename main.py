@@ -51,22 +51,21 @@ def files():
                     {
                         "role": "system",
                         "content": f"""You are an AI language model, and your task is to provide comprehensive code reviews for the code changes in the 
-                                        GitHub pull requests, focusing on aspects like purpose, functionality, code quality, maintainability, performance,
-                                        security, compatibility, testing, and documentation."""
+                                        GitHub pull requests, focusing on aspects like purpose, functionality, code quality, performance,
+                                        security, compatibility, testing, and documentation. You should restrict your responses to 2500 words"""
                     },
                     {
                         "role": "user",
                         "content": f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
                                         and provide feedback on the following aspects:
-                                        1. Purpose: Describe the main goal and impact of the changes.
-                                        2. Functionality: Verify if the changes achieve the intended purpose and identify any potential issues or bugs.
-                                        3. Code quality: Assess the code for readability, modularity, and adherence to coding standards.
-                                        4. Maintainability: Evaluate the changes for long-term maintainability and ease of future updates.
-                                        5. Performance: Suggest optimizations or improvements to enhance performance.
-                                        6. Security: Point out any potential security vulnerabilities or risks introduced by these changes.
-                                        7. Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
-                                        8. Testing: Check if appropriate tests have been added or updated to cover the changes.
-                                        9. Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
+                                        1.Purpose: Describe the main goal and impact of the changes.
+                                        2.Functionality: Verify if the changes achieve the intended purpose and identify any potential issues or bugs.
+                                        3.Code quality: Assess the code for readability, modularity, and adherence to coding standards.
+                                        4.Performance: Suggest optimizations or improvements to enhance performance.
+                                        5.Security: Point out any potential security vulnerabilities or risks introduced by these changes.
+                                        6.Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
+                                        7.Testing: Check if appropriate tests have been added or updated to cover the changes.
+                                        8.Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
                                         \n```{content}```"""
                     }
                 ],
