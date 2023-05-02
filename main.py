@@ -47,26 +47,38 @@ def files():
             # Sending the code to ChatGPT
             response = openai.ChatCompletion.create(
                 model=args.openai_engine,
-                prompt=(
-                    f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
-                        and provide feedback on the following aspects:
-                        1. Purpose: Describe the main goal and impact of these changes.
-                        2. Functionality: Verify if the changes achieve the intended purpose and identify any potential issues or bugs.
-                        3. Code quality: Assess the code for readability, modularity, and adherence to coding standards.
-                        4. Maintainability: Evaluate the changes for long-term maintainability and ease of future updates.
-                        5. Performance: Suggest optimizations or improvements to enhance performance.
-                        6. Security: Point out any potential security vulnerabilities or risks introduced by these changes.
-                        7. Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
-                        8. Testing: Check if appropriate tests have been added or updated to cover the changes.
-                        9. Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
-                        \n```{content}```"""),
+                messages=[{
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": f"""You are an AI language model, and your task is to provide comprehensive code reviews for the code changes in the 
+                                        GitHub pull requests, focusing on aspects like purpose, functionality, code quality, maintainability, performance,
+                                        security, compatibility, testing, and documentation."""
+                        },
+                        {
+                            "role": "user",
+                            "content": f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
+                                        and provide feedback on the following aspects:
+                                        1. Purpose: Describe the main goal and impact of the changes.
+                                        2. Functionality: Verify if the changes achieve the intended purpose and identify any potential issues or bugs.
+                                        3. Code quality: Assess the code for readability, modularity, and adherence to coding standards.
+                                        4. Maintainability: Evaluate the changes for long-term maintainability and ease of future updates.
+                                        5. Performance: Suggest optimizations or improvements to enhance performance.
+                                        6. Security: Point out any potential security vulnerabilities or risks introduced by these changes.
+                                        7. Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
+                                        8. Testing: Check if appropriate tests have been added or updated to cover the changes.
+                                        9. Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
+                                        \n```{content}```"""
+                        }
+                    ]
+                }],
                 temperature=float(args.openai_temperature),
                 max_tokens=int(args.openai_max_tokens)
             )
 
             # Adding a comment to the pull request with ChatGPT's response
             pull_request.create_issue_comment(
-                f"ChatGPT's response about `{file.filename}`:\n {response['choices'][0]['text']}")
+                f"ChatGPT's response about `{file.filename}`:\n {response['choices'][1]['content']}")
 
 
 def patch():
