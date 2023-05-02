@@ -66,7 +66,9 @@ def files():
                                         6.Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
                                         7.Testing: Check if appropriate tests have been added or updated to cover the changes.
                                         8.Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
-                                        \n```{content}```"""
+                                        \n```{content}```\n
+                                        Also. highlight the major vulnerabilities in the code and suggest ways to fix them. If there are no major vulnerabilities,
+                                        please mention the vulnerability score out of 10."""
                     }
                 ],
                 temperature=float(args.openai_temperature),
