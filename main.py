@@ -46,7 +46,7 @@ def files():
 
             # Sending the code to ChatGPT
             response = openai.ChatCompletion.create(
-                engine=args.openai_engine,
+                model=args.openai_engine,
                 prompt=(
                     f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
                         and provide feedback on the following aspects:
