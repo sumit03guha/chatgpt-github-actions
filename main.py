@@ -52,7 +52,7 @@ def files():
                         "role": "system",
                         "content": f"""You are an AI language model, and your task is to provide comprehensive code reviews for the code changes in the 
                                         GitHub pull requests, focusing on aspects like purpose, functionality, code quality, performance,
-                                        security, compatibility, testing, and documentation. You should restrict your responses to 2500 words"""
+                                        security, compatibility, testing, and documentation."""
                     },
                     {
                         "role": "user",
@@ -74,6 +74,7 @@ def files():
             )
 
             print(response['choices'][0]['message']['content'])
+            print('usage', response['usage'])
 
             # Adding a comment to the pull request with ChatGPT's response
             pull_request.create_issue_comment(
