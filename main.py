@@ -1,27 +1,31 @@
 # Automated Code Review using the ChatGPT language model
 
-## Import statements
-import argparse
-import openai
+# Imports
 import os
+import openai
+import argparse
 import requests
 from github import Github
 
-## Adding command-line arguments
+# CLI arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--openai_api_key', help='Your OpenAI API Key')
 parser.add_argument('--github_token', help='Your Github Token')
 parser.add_argument('--github_pr_id', help='Your Github PR ID')
-parser.add_argument('--openai_engine', default="text-davinci-002", help='GPT-3 model to use. Options: text-davinci-002, text-babbage-001, text-curie-001, text-ada-001')
-parser.add_argument('--openai_temperature', default=0.5, help='Sampling temperature to use. Higher values means the model will take more risks. Recommended: 0.5')
-parser.add_argument('--openai_max_tokens', default=2048, help='The maximum number of tokens to generate in the completion.')
-parser.add_argument('--mode', default="files", help='PR interpretation form. Options: files, patch')
+parser.add_argument('--openai_engine', default="gpt-3.5-turbo",
+                    help='GPT-3 model to use. Options: gpt-3.5-turbo, text-davinci-002, text-babbage-001, text-curie-001, text-ada-001')
+parser.add_argument('--openai_temperature', default=0.5,
+                    help='Sampling temperature to use. Higher values means the model will take more risks. Recommended: 0.5')
+parser.add_argument('--openai_max_tokens', default=4096,
+                    help='The maximum number of tokens to generate in the completion.')
+parser.add_argument('--mode', default="files",
+                    help='PR interpretation form. Options: files, patch')
 args = parser.parse_args()
 
-## Authenticating with the OpenAI API
+# OpenAI API authentication
 openai.api_key = args.openai_api_key
 
-## Authenticating with the Github API
+# Github API authentication
 g = Github(args.github_token)
 
 
@@ -29,7 +33,7 @@ def files():
     repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
     pull_request = repo.get_pull(int(args.github_pr_id))
 
-    ## Loop through the commits in the pull request
+    # Loop through the commits in the pull request
     commits = pull_request.get_commits()
     for commit in commits:
         # Getting the modified files in the commit
@@ -37,12 +41,25 @@ def files():
         for file in files:
             # Getting the file name and content
             filename = file.filename
-            content = repo.get_contents(filename, ref=commit.sha).decoded_content
+            content = repo.get_contents(
+                filename, ref=commit.sha).decoded_content
 
             # Sending the code to ChatGPT
             response = openai.Completion.create(
                 engine=args.openai_engine,
-                prompt=(f"Explain Code:\n```{content}```"),
+                prompt=(
+                    f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
+                        and provide feedback on the following aspects:
+                        1. Purpose: Describe the main goal and impact of these changes.
+                        2. Functionality: Verify if the changes achieve the intended purpose and identify any potential issues or bugs.
+                        3. Code quality: Assess the code for readability, modularity, and adherence to coding standards.
+                        4. Maintainability: Evaluate the changes for long-term maintainability and ease of future updates.
+                        5. Performance: Suggest optimizations or improvements to enhance performance.
+                        6. Security: Point out any potential security vulnerabilities or risks introduced by these changes.
+                        7. Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
+                        8. Testing: Check if appropriate tests have been added or updated to cover the changes.
+                        9. Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
+                        \n```{content}```"""),
                 temperature=float(args.openai_temperature),
                 max_tokens=int(args.openai_max_tokens)
             )
@@ -59,34 +76,45 @@ def patch():
     content = get_content_patch()
 
     if len(content) == 0:
-        pull_request.create_issue_comment(f"Patch file does not contain any changes")
+        pull_request.create_issue_comment(
+            f"Patch file does not contain any changes")
         return
 
     parsed_text = content.split("diff")
 
     for diff_text in parsed_text:
-        if len(diff_text) == 0:
+        if len(args.openai_max_tokens) == 0:
             continue
 
         try:
             file_name = diff_text.split("b/")[1].splitlines()[0]
             print(file_name)
-
-            response = openai.Completion.create(
-                engine=args.openai_engine,
-                prompt=(f"Summarize what was done in this diff:\n```{diff_text}```"),
-                temperature=float(args.openai_temperature),
-                max_tokens=int(args.openai_max_tokens)
-            )
-            print(response)
-            print(response['choices'][0]['text'])
+            parts = [diff_text[i:i+args.openai_max_tokens]
+                     for i in range(0, len(diff_text), args.openai_max_tokens)]
+            full_response = ""
+            text_parts = []
+            for part in parts:
+                response = openai.Completion.create(
+                    engine=args.openai_engine,
+                    prompt=(
+                        f"Summarize what was done in this diff:\n```{part}```"),
+                    max_tokens=int(args.openai_max_tokens),
+                    n=1,
+                    stop=None,
+                    temperature=float(args.openai_temperature)
+                )
+            text_parts.append(response.choices[0].text)
+            full_response = ''.join(text_parts)
+            print(full_response)
+            print(full_response['choices'][0]['text'])
 
             pull_request.create_issue_comment(
-                f"ChatGPT's response about ``{file_name}``:\n {response['choices'][0]['text']}")
+                f"ChatGPT's response about ``{file_name}``:\n {full_response['choices'][0]['text']}")
         except Exception as e:
             error_message = str(e)
             print(error_message)
-            pull_request.create_issue_comment(f"ChatGPT was unable to process the response about {file_name}")
+            pull_request.create_issue_comment(
+                f"ChatGPT was unable to process the response about {file_name}")
 
 
 def get_content_patch():
