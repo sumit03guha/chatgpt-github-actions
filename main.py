@@ -45,7 +45,7 @@ def files():
                 filename, ref=commit.sha).decoded_content
 
             # Sending the code to ChatGPT
-            response = openai.Completion.create(
+            response = openai.ChatCompletion.create(
                 engine=args.openai_engine,
                 prompt=(
                     f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
