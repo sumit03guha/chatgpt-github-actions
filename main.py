@@ -47,17 +47,16 @@ def files():
             # Sending the code to ChatGPT
             response = openai.ChatCompletion.create(
                 model=args.openai_engine,
-                messages=[{
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": f"""You are an AI language model, and your task is to provide comprehensive code reviews for the code changes in the 
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"""You are an AI language model, and your task is to provide comprehensive code reviews for the code changes in the 
                                         GitHub pull requests, focusing on aspects like purpose, functionality, code quality, maintainability, performance,
                                         security, compatibility, testing, and documentation."""
-                        },
-                        {
-                            "role": "user",
-                            "content": f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
+                    },
+                    {
+                        "role": "user",
+                        "content": f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
                                         and provide feedback on the following aspects:
                                         1. Purpose: Describe the main goal and impact of the changes.
                                         2. Functionality: Verify if the changes achieve the intended purpose and identify any potential issues or bugs.
@@ -69,9 +68,8 @@ def files():
                                         8. Testing: Check if appropriate tests have been added or updated to cover the changes.
                                         9. Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
                                         \n```{content}```"""
-                        }
-                    ]
-                }],
+                    }
+                ],
                 temperature=float(args.openai_temperature),
                 max_tokens=int(args.openai_max_tokens)
             )
