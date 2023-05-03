@@ -1,13 +1,17 @@
-# Container image that runs your code
+# Use the official Python 3.8 slim image as the base image
 FROM python:3.8-slim
 
-# Instalando as dependencias
+# Copy the requirements file into the container
 COPY requirements.txt .
-RUN pip install -r requirements.txt
 
-# Copies your code file from your action repository to the filesystem path `/` of the container
-COPY entrypoint.sh /entrypoint.sh
-COPY main.py /main.py
+# Install the dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Code file to execute when the docker container starts up (`entrypoint.sh`)
+# Copy the source code and entrypoint script into the container
+COPY main.py entrypoint.sh ./
+
+# Make the entrypoint script executable
+RUN chmod +x entrypoint.sh
+
+# Set the entrypoint for the container to be the entrypoint.sh script
 ENTRYPOINT ["/entrypoint.sh"]

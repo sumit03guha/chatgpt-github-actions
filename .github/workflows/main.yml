@@ -2,6 +2,10 @@ on:
   pull_request: # Trigger the workflow on pull request events
     types: [opened, synchronize] # Run the workflow when pull request is opened or synchronized
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   hello_world_job: # Define the job
     runs-on: ubuntu-latest # Specify the runner to run the job on

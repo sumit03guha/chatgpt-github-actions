@@ -28,7 +28,6 @@ openai.api_key = args.openai_api_key
 # Github API authentication
 g = Github(args.github_token)
 
-
 def files():
     repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
     pull_request = repo.get_pull(int(args.github_pr_id))
