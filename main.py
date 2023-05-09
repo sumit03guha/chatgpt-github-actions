@@ -28,6 +28,7 @@ openai.api_key = args.openai_api_key
 # Github API authentication
 g = Github(args.github_token)
 
+
 def files():
     repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
     pull_request = repo.get_pull(int(args.github_pr_id))
@@ -35,51 +36,62 @@ def files():
     # Loop through the commits in the pull request
     commits = pull_request.get_commits()
     for commit in commits:
-        # Getting the modified files in the commit
-        files = commit.files
-        for file in files:
-            # Getting the file name and content
-            filename = file.filename
-            content = repo.get_contents(
-                filename, ref=commit.sha).decoded_content
+        print('COMMIT : ', commit)
+        statuses = commit.get_statuses()
 
-            # Sending the code to ChatGPT
-            response = openai.ChatCompletion.create(
-                model=args.openai_engine,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": f"""You are an AI language model, and your task is to provide comprehensive code reviews for the code changes in the 
-                                        GitHub pull requests, focusing on aspects like purpose, functionality, code quality, performance,
-                                        security, compatibility, testing, and documentation."""
-                    },
-                    {
-                        "role": "user",
-                        "content": f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks
-                                        and provide feedback on the following aspects:
-                                        1.Purpose: Describe the main goal and impact of the changes.
-                                        2.Functionality: Verify if the changes achieve the intended purpose and identify any potential issues or bugs.
-                                        3.Code quality: Assess the code for readability, modularity, and adherence to coding standards.
-                                        4.Performance: Suggest optimizations or improvements to enhance performance.
-                                        5.Security: Point out any potential security vulnerabilities or risks introduced by these changes.
-                                        6.Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
-                                        7.Testing: Check if appropriate tests have been added or updated to cover the changes.
-                                        8.Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
-                                        \n```{content}```\n
-                                        Also. highlight the major vulnerabilities in the code and suggest ways to fix them. If there are no major vulnerabilities,
-                                        please mention the vulnerability score out of 10."""
-                    }
-                ],
-                temperature=float(args.openai_temperature),
-                max_tokens=int(args.openai_max_tokens)
-            )
+        if statuses.totalCount == 0 or statuses[0].state != 'success':
+            print('CHATGPT...')
+            # do the chatgpt task
 
-            print(response['choices'][0]['message']['content'])
-            print('usage', response['usage'])
+            # Getting the modified files in the commit
+            files = commit.files
+            for file in files:
+                # Getting the file name and content
+                filename = file.filename
+                content = repo.get_contents(
+                    filename, ref=commit.sha).decoded_content
 
-            # Adding a comment to the pull request with ChatGPT's response
-            pull_request.create_issue_comment(
-                f"ChatGPT's response about `{file.filename}`:\n {response['choices'][0]['message']['content']}")
+                # Sending the code to ChatGPT
+                response = openai.ChatCompletion.create(
+                    model='gpt-3.5-turbo',
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": f"""You are an AI language model, and your task is to provide comprehensive code reviews for the code changes in the 
+                                            GitHub pull requests, focusing on aspects like purpose, functionality, code quality, performance,
+                                            security, compatibility, testing, and documentation. The output should in a markdown format."""
+                        },
+                        {
+                            "role": "user",
+                            "content": f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks and provide feedback on the following aspects:
+                                                1. Purpose: Describe the main goal and impact of the changes.
+                                                2. Functionality: Verify if the changes achieve the intended purpose, the logic reflects the function name and identify any potential issues or bugs.
+                                                3. Code quality: Assess the code for readability, modularity, adherence to coding standards, and variable and function naming conventions.
+                                                4. Performance: Suggest optimizations or improvements to enhance performance.
+                                                5. Security: Point out any potential security vulnerabilities or risks introduced by these changes.
+                                                6. Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
+                                                7. Testing: Check if appropriate tests have been added or updated to cover the changes.
+                                                8. Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
+                                                \n```{content}```\n
+                                                Additionally, highlight any major vulnerabilities in the code and suggest ways to fix them. If there are no major vulnerabilities,
+                                                please mention the vulnerability score out of 10. Also, provide an analysis and feedback on the naming conventions used for variables
+                                                and functions to ensure clarity and consistency."""
+                        }
+                    ],
+                    temperature=float(args.openai_temperature),
+                    max_tokens=int(args.openai_max_tokens)
+                )
+
+                print('usage', response['usage'])
+
+                # Adding a comment to the pull request with ChatGPT's response
+                pull_request.create_issue_comment(
+                    f"ChatGPT's response about `{file.filename}`:\n {response['choices'][0]['message']['content']}")
+
+                # save the state
+                commit.create_status(state='success')
+        else:
+            print('DONE')
 
 
 def patch():
