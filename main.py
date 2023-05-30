@@ -9,17 +9,23 @@ from github import Github
 
 # CLI arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--openai_api_key', help='Your OpenAI API Key')
-parser.add_argument('--github_token', help='Your Github Token')
-parser.add_argument('--github_pr_id', help='Your Github PR ID')
-parser.add_argument('--openai_engine', default="gpt-3.5-turbo",
-                    help='GPT-3 model to use. Options: gpt-3.5-turbo, text-davinci-002, text-babbage-001, text-curie-001, text-ada-001')
-parser.add_argument('--openai_temperature', default=0.5,
-                    help='Sampling temperature to use. Higher values means the model will take more risks. Recommended: 0.5')
-parser.add_argument('--openai_max_tokens', default=4096,
-                    help='The maximum number of tokens to generate in the completion.')
-parser.add_argument('--mode', default="files",
-                    help='PR interpretation form. Options: files, patch')
+parser.add_argument("--openai_api_key", help="Your OpenAI API Key")
+parser.add_argument("--github_token", help="Your Github Token")
+parser.add_argument("--github_pr_id", help="Your Github PR ID")
+parser.add_argument(
+    "--openai_engine",
+    default="gpt-3.5-turbo",
+    help="GPT-3 model to use. Options: gpt-3.5-turbo, text-davinci-002, text-babbage-001, text-curie-001, text-ada-001",
+)
+parser.add_argument(
+    "--openai_temperature",
+    default=0.5,
+    help="Sampling temperature to use. Higher values means the model will take more risks. Recommended: 0.5",
+)
+parser.add_argument(
+    "--openai_max_tokens", default=4096, help="The maximum number of tokens to generate in the completion."
+)
+parser.add_argument("--mode", default="files", help="PR interpretation form. Options: files, patch")
 args = parser.parse_args()
 
 # OpenAI API authentication
@@ -30,17 +36,17 @@ g = Github(args.github_token)
 
 
 def files():
-    repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
+    repo = g.get_repo(os.getenv("GITHUB_REPOSITORY"))
     pull_request = repo.get_pull(int(args.github_pr_id))
 
     # Loop through the commits in the pull request
     commits = pull_request.get_commits()
     for commit in commits:
-        print('COMMIT : ', commit)
+        print("COMMIT : ", commit)
         statuses = commit.get_statuses()
 
-        if statuses.totalCount == 0 or statuses[0].state != 'success':
-            print('CHATGPT...')
+        if statuses.totalCount == 0 or statuses[0].state != "success":
+            print("CHATGPT...")
             # do the chatgpt task
 
             # Getting the modified files in the commit
@@ -48,61 +54,64 @@ def files():
             for file in files:
                 # Getting the file name and content
                 filename = file.filename
-                content = repo.get_contents(
-                    filename, ref=commit.sha).decoded_content
+                content = repo.get_contents(filename, ref=commit.sha).decoded_content
 
                 # Sending the code to ChatGPT
                 response = openai.ChatCompletion.create(
-                    model='gpt-3.5-turbo',
+                    model="gpt-3.5-turbo",
                     messages=[
                         {
                             "role": "system",
-                            "content": f"""You are an AI language model, and your task is to provide comprehensive code reviews for the code changes in the 
-                                            GitHub pull requests, focusing on aspects like purpose, functionality, code quality, performance,
-                                            security, compatibility, testing, and documentation. The output should in a markdown format."""
+                            "content": f"""You are an AI language model, capable of providing comprehensive code reviews for code changes in GitHub pull requests.
+                                        Your primary areas of focus include: purpose, functionality, code quality, performance, security, compatibility, testing, and documentation.
+                                        Your outputs should be formatted as markdown for readability and clarity.""",
                         },
                         {
                             "role": "user",
-                            "content": f"""Please review the following code changes in this GitHub pull request delimited by the triple backticks and provide feedback on the following aspects:
-                                                1. Purpose: Describe the main goal and impact of the changes.
-                                                2. Functionality: Verify if the changes achieve the intended purpose, the logic reflects the function name and identify any potential issues or bugs.
-                                                3. Code quality: Assess the code for readability, modularity, adherence to coding standards, and variable and function naming conventions.
-                                                4. Performance: Suggest optimizations or improvements to enhance performance.
-                                                5. Security: Point out any potential security vulnerabilities or risks introduced by these changes.
-                                                6. Compatibility: Ensure the changes do not introduce breaking changes or incompatibilities with existing code.
-                                                7. Testing: Check if appropriate tests have been added or updated to cover the changes.
-                                                8. Documentation: Evaluate the quality and completeness of comments, commit messages, and documentation updates.
-                                                \n```{content}```\n
-                                                Additionally, highlight any major vulnerabilities in the code and suggest ways to fix them. If there are no major vulnerabilities,
-                                                please mention the vulnerability score out of 10. Also, provide an analysis and feedback on the naming conventions used for variables
-                                                and functions to ensure clarity and consistency."""
-                        }
+                            "content": f"""Please conduct a thorough code review on the following code changes in this GitHub pull request. The code is provided within triple backticks below.
+                                        I'd like you to provide feedback on the following aspects:
+
+                            1. Purpose: What is the main goal and potential impact of these changes?
+                            2. Functionality: Do these changes fulfill their intended purpose? Does the code logic reflect the function name? Identify any potential issues or bugs.
+                            3. Code Quality: How readable and modular is the code? Does it adhere to coding standards? Are variable and function naming conventions followed?
+                            4. Performance: Are there any opportunities for optimization or performance enhancements in the code?
+                            5. Security: Are there any potential security vulnerabilities or risks associated with these changes?
+                            6. Compatibility: Does this code introduce any breaking changes or incompatibilities with the existing codebase?
+                            7. Testing: Have appropriate tests been added or modified to cover these changes?
+                            8. Documentation: How is the quality and completeness of comments, commit messages, and documentation updates?
+
+                            ```{content}```
+
+                            I would also like you to highlight any major vulnerabilities in the code and suggest possible solutions for those.
+                            If there are no major vulnerabilities, kindly rate the vulnerability score out of 10.
+                            Further, provide feedback on the variable and function naming conventions used in the code, evaluating for clarity and consistency.""",
+                        },
                     ],
                     temperature=float(args.openai_temperature),
-                    max_tokens=int(args.openai_max_tokens)
+                    max_tokens=int(args.openai_max_tokens),
                 )
 
-                print('usage', response['usage'])
+                print("usage", response["usage"])
 
                 # Adding a comment to the pull request with ChatGPT's response
                 pull_request.create_issue_comment(
-                    f"ChatGPT's response about `{file.filename}`:\n {response['choices'][0]['message']['content']}")
+                    f"ChatGPT's response about `{file.filename}`:\n {response['choices'][0]['message']['content']}"
+                )
 
                 # save the state
-                commit.create_status(state='success')
+                commit.create_status(state="success")
         else:
-            print('DONE')
+            print("DONE")
 
 
 def patch():
-    repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
+    repo = g.get_repo(os.getenv("GITHUB_REPOSITORY"))
     pull_request = repo.get_pull(int(args.github_pr_id))
 
     content = get_content_patch()
 
     if len(content) == 0:
-        pull_request.create_issue_comment(
-            f"Patch file does not contain any changes")
+        pull_request.create_issue_comment(f"Patch file does not contain any changes")
         return
 
     parsed_text = content.split("diff")
@@ -114,42 +123,39 @@ def patch():
         try:
             file_name = diff_text.split("b/")[1].splitlines()[0]
             print(file_name)
-            parts = [diff_text[i:i+args.openai_max_tokens]
-                     for i in range(0, len(diff_text), args.openai_max_tokens)]
+            parts = [
+                diff_text[i : i + args.openai_max_tokens] for i in range(0, len(diff_text), args.openai_max_tokens)
+            ]
             full_response = ""
             text_parts = []
             for part in parts:
                 response = openai.Completion.create(
                     engine=args.openai_engine,
-                    prompt=(
-                        f"Summarize what was done in this diff:\n```{part}```"),
+                    prompt=(f"Summarize what was done in this diff:\n```{part}```"),
                     max_tokens=int(args.openai_max_tokens),
                     n=1,
                     stop=None,
-                    temperature=float(args.openai_temperature)
+                    temperature=float(args.openai_temperature),
                 )
             text_parts.append(response.choices[0].text)
-            full_response = ''.join(text_parts)
+            full_response = "".join(text_parts)
             print(full_response)
-            print(full_response['choices'][0]['text'])
+            print(full_response["choices"][0]["text"])
 
             pull_request.create_issue_comment(
-                f"ChatGPT's response about ``{file_name}``:\n {full_response['choices'][0]['text']}")
+                f"ChatGPT's response about ``{file_name}``:\n {full_response['choices'][0]['text']}"
+            )
         except Exception as e:
             error_message = str(e)
             print(error_message)
-            pull_request.create_issue_comment(
-                f"ChatGPT was unable to process the response about {file_name}")
+            pull_request.create_issue_comment(f"ChatGPT was unable to process the response about {file_name}")
 
 
 def get_content_patch():
     url = f"https://api.github.com/repos/{os.getenv('GITHUB_REPOSITORY')}/pulls/{args.github_pr_id}"
     print(url)
 
-    headers = {
-        'Authorization': f"token {args.github_token}",
-        'Accept': 'application/vnd.github.v3.diff'
-    }
+    headers = {"Authorization": f"token {args.github_token}", "Accept": "application/vnd.github.v3.diff"}
 
     response = requests.request("GET", url, headers=headers)
 
@@ -159,8 +165,8 @@ def get_content_patch():
     return response.text
 
 
-if (args.mode == "files"):
+if args.mode == "files":
     files()
 
-if (args.mode == "patch"):
+if args.mode == "patch":
     patch()
