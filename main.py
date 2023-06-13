@@ -130,7 +130,7 @@ def files():
                     tokens_to_send = num_tokens_from_messages(message_to_send, "gpt-3.5-turbo")
                     print(f"""{tokens_to_send} prompt tokens for {file}.""")
 
-                    if tokens_to_send < args.openai_max_tokens:
+                    if tokens_to_send < int(args.openai_max_tokens):
                         # Sending the code to ChatGPT
                         try:
                             response = openai.ChatCompletion.create(
