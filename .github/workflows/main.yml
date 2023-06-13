@@ -1,6 +1,8 @@
 on:
   pull_request: # Trigger the workflow on pull request events
     types: [opened, synchronize] # Run the workflow when pull request is opened or synchronized
+    paths-ignore:
+      - 'contracts/**'
 
 permissions:
   contents: read
