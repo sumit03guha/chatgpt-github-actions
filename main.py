@@ -137,7 +137,7 @@ def files():
                                 model="gpt-3.5-turbo",
                                 messages=message_to_send,
                                 temperature=float(0.5),
-                                max_tokens=int(args.openai_max_tokens - tokens_to_send),
+                                max_tokens=int(args.openai_max_tokens) - tokens_to_send,
                             )
 
                             print(response["choices"][0]["message"]["content"])
