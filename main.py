@@ -5,6 +5,7 @@ import os
 import openai
 import argparse
 import requests
+import tiktoken
 from github import Github
 
 # CLI arguments
@@ -34,8 +35,46 @@ openai.api_key = args.openai_api_key
 # Github API authentication
 g = Github(args.github_token)
 
+encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
+
+def num_tokens_from_messages(messages, model):
+    """Returns the number of tokens used by a list of messages."""
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        print("Warning: model not found. Using cl100k_base encoding.")
+        encoding = tiktoken.get_encoding("cl100k_base")
+    if model == "gpt-3.5-turbo":
+        print("Warning: gpt-3.5-turbo may change over time. Returning num tokens assuming gpt-3.5-turbo-0301.")
+        return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301")
+    elif model == "gpt-4":
+        print("Warning: gpt-4 may change over time. Returning num tokens assuming gpt-4-0314.")
+        return num_tokens_from_messages(messages, model="gpt-4-0314")
+    elif model == "gpt-3.5-turbo-0301":
+        tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+        tokens_per_name = -1  # if there's a name, the role is omitted
+    elif model == "gpt-4-0314":
+        tokens_per_message = 3
+        tokens_per_name = 1
+    else:
+        raise NotImplementedError(
+            f"""num_tokens_from_messages() is not implemented for model {model}. See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
+        )
+    num_tokens = 0
+    for message in messages:
+        num_tokens += tokens_per_message
+        for key, value in message.items():
+            num_tokens += len(encoding.encode(value))
+            if key == "name":
+                num_tokens += tokens_per_name
+    num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+    return num_tokens
+
 
 def files():
+    files_to_avoid = ["package-lock.json", "yarn.lock"]
+
     repo = g.get_repo(os.getenv("GITHUB_REPOSITORY"))
     pull_request = repo.get_pull(int(args.github_pr_id))
 
@@ -46,60 +85,78 @@ def files():
         statuses = commit.get_statuses()
 
         if statuses.totalCount == 0 or statuses[0].state != "success":
-            print("CHATGPT...")
             # do the chatgpt task
+            print("CHATGPT...")
 
             # Getting the modified files in the commit
             files = commit.files
             for file in files:
                 # Getting the file name and content
                 filename = file.filename
-                content = repo.get_contents(filename, ref=commit.sha).decoded_content
+                if filename not in files_to_avoid:
+                    try:
+                        content = repo.get_contents(filename, ref=commit.sha).decoded_content
+                    except Exception as e:
+                        print(f"Iteration skipped for {filename} due to reason {e}")
+                        continue
 
-                # Sending the code to ChatGPT
-                response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
+                    message_to_send = [
                         {
                             "role": "system",
                             "content": f"""You are an AI language model, capable of providing comprehensive code reviews for code changes in GitHub pull requests.
-                                        Your primary areas of focus include: purpose, functionality, code quality, performance, security, compatibility, testing, and documentation.
-                                        Your outputs should be formatted as markdown for readability and clarity.""",
+                                            Your primary areas of focus include: purpose, functionality, code quality, performance, security, compatibility, and documentation.
+                                            Your outputs should be formatted as markdown for readability and clarity.""",
                         },
                         {
                             "role": "user",
                             "content": f"""Please conduct a thorough code review on the following code changes in this GitHub pull request. The code is provided within triple backticks below.
-                                        I'd like you to provide feedback on the following aspects:
+                                            I'd like you to provide feedback on the following aspects:
 
-                            1. Purpose: What is the main goal and potential impact of these changes?
-                            2. Functionality: Do these changes fulfill their intended purpose? Does the code logic reflect the function name? Identify any potential issues or bugs.
-                            3. Code Quality: How readable and modular is the code? Does it adhere to coding standards? Are variable and function naming conventions followed?
-                            4. Performance: Are there any opportunities for optimization or performance enhancements in the code?
-                            5. Security: Are there any potential security vulnerabilities or risks associated with these changes?
-                            6. Compatibility: Does this code introduce any breaking changes or incompatibilities with the existing codebase?
-                            7. Testing: Have appropriate tests been added or modified to cover these changes?
-                            8. Documentation: How is the quality and completeness of comments, commit messages, and documentation updates?
+                                            1. Purpose: What is the main goal and potential impact of these changes?
+                                            2. Functionality: Do these changes fulfill their intended purpose? Does the code logic reflect the function name? Identify any potential issues or bugs.
+                                            3. Code Quality: How readable and modular is the code? Does it adhere to coding standards? Are variable and function naming conventions followed?
+                                            4. Performance: Are there any opportunities for optimization or performance enhancements in the code?
+                                            5. Security: Are there any potential security vulnerabilities or risks associated with these changes?
+                                            6. Compatibility: Does this code introduce any breaking changes or incompatibilities with the existing codebase?
+                                            7. Documentation: How is the quality and completeness of comments, commit messages, and documentation updates?
 
-                            ```{content}```
+                                            ```{content}```
 
-                            I would also like you to highlight any major vulnerabilities in the code and suggest possible solutions for those.
-                            If there are no major vulnerabilities, kindly rate the vulnerability score out of 10.
-                            Further, provide feedback on the variable and function naming conventions used in the code, evaluating for clarity and consistency.""",
+                                            Highlight any major vulnerabilities in the code and suggest possible solutions.
+                                            Rate the vulnerability score out of 10.
+                                            Provide feedback on the variable and function naming conventions used in the code, evaluating for clarity and consistency.""",
                         },
-                    ],
-                    temperature=float(args.openai_temperature),
-                    max_tokens=int(args.openai_max_tokens),
-                )
+                    ]
+                    tokens_to_send = num_tokens_from_messages(message_to_send, "gpt-3.5-turbo")
+                    print(f"""{tokens_to_send} prompt tokens for {file}.""")
 
-                print("usage", response["usage"])
+                    if tokens_to_send < args.openai_max_tokens:
+                        # Sending the code to ChatGPT
+                        try:
+                            response = openai.ChatCompletion.create(
+                                model="gpt-3.5-turbo",
+                                messages=message_to_send,
+                                temperature=float(0.5),
+                                max_tokens=int(args.openai_max_tokens - tokens_to_send),
+                            )
 
-                # Adding a comment to the pull request with ChatGPT's response
-                pull_request.create_issue_comment(
-                    f"ChatGPT's response about `{file.filename}`:\n {response['choices'][0]['message']['content']}"
-                )
+                            print(response["choices"][0]["message"]["content"])
+                            print("usage", response["usage"])
 
-                # save the state
-                commit.create_status(state="success")
+                            # Adding a comment to the pull request with ChatGPT's response
+                            pull_request.create_issue_comment(
+                                f"ChatGPT's response about `{file.filename}`:\n {response['choices'][0]['message']['content']}"
+                            )
+
+                            # save the state
+                            commit.create_status(state="success")
+                        except Exception as e:
+                            print(f"Failed to fetch openai's response due to reason {e}")
+                            continue
+                    else:
+                        print(f"tokens exceeding for file : {filename}")
+                else:
+                    print(f"skipping package file : {filename}")
         else:
             print("DONE")
 
