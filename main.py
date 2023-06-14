@@ -48,6 +48,9 @@ def num_tokens_from_messages(messages, model):
     if model == "gpt-3.5-turbo":
         print("Warning: gpt-3.5-turbo may change over time. Returning num tokens assuming gpt-3.5-turbo-0301.")
         return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301")
+    elif model == "gpt-3.5-turbo-16k":
+        print("Warning: gpt-4 may change over time. Returning num tokens assuming gpt-4-0314.")
+        return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301")
     elif model == "gpt-4":
         print("Warning: gpt-4 may change over time. Returning num tokens assuming gpt-4-0314.")
         return num_tokens_from_messages(messages, model="gpt-4-0314")
@@ -134,7 +137,7 @@ def files():
                         # Sending the code to ChatGPT
                         try:
                             response = openai.ChatCompletion.create(
-                                model="gpt-3.5-turbo",
+                                model="gpt-3.5-turbo-16k",
                                 messages=message_to_send,
                                 temperature=float(0.5),
                                 max_tokens=int(args.openai_max_tokens) - tokens_to_send,
