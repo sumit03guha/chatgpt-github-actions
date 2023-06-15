@@ -15,9 +15,9 @@ inputs:
     required: true
     default: ''
   openai_engine: # id of input
-    description: 'Choose the GPT-3 model for code review. Options: gpt-3.5-turbo, text-davinci-002, text-babbage-001, text-curie-001, text-ada-001'
+    description: 'Choose the GPT model for code review. Options: gpt-4, gpt-3.5-turbo, gpt-3.5-turbo-16k, text-davinci-002, text-babbage-001, text-curie-001, text-ada-001'
     required: false
-    default: 'gpt-3.5-turbo'
+    default: 'gpt-3.5-turbo-16k'
   openai_temperature: # id of input
     description: 'What sampling temperature to use. Higher values means the model will take more risks. Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer.'
     required: false
@@ -25,7 +25,7 @@ inputs:
   openai_max_tokens: # id of input
     description: 'The maximum number of tokens to generate in the completion.'
     required: false
-    default: '4096'
+    default: '16384'
   mode: # id of input
     description: 'How to capture PR changes. Options: files, patch'
     required: false

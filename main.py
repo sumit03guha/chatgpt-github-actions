@@ -15,8 +15,8 @@ parser.add_argument("--github_token", help="Your Github Token")
 parser.add_argument("--github_pr_id", help="Your Github PR ID")
 parser.add_argument(
     "--openai_engine",
-    default="gpt-3.5-turbo",
-    help="GPT-3 model to use. Options: gpt-3.5-turbo, text-davinci-002, text-babbage-001, text-curie-001, text-ada-001",
+    default="gpt-3.5-turbo-16k",
+    help="GPT model to use. Options: gpt-4, gpt-3.5-turbo-16k, gpt-3.5-turbo, text-davinci-002, text-babbage-001, text-curie-001, text-ada-001",
 )
 parser.add_argument(
     "--openai_temperature",
@@ -24,7 +24,7 @@ parser.add_argument(
     help="Sampling temperature to use. Higher values means the model will take more risks. Recommended: 0.5",
 )
 parser.add_argument(
-    "--openai_max_tokens", default=4096, help="The maximum number of tokens to generate in the completion."
+    "--openai_max_tokens", default=16384, help="The maximum number of tokens to generate in the completion."
 )
 parser.add_argument("--mode", default="files", help="PR interpretation form. Options: files, patch")
 args = parser.parse_args()
@@ -49,7 +49,7 @@ def num_tokens_from_messages(messages, model):
         print("Warning: gpt-3.5-turbo may change over time. Returning num tokens assuming gpt-3.5-turbo-0301.")
         return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301")
     elif model == "gpt-3.5-turbo-16k":
-        print("Warning: gpt-4 may change over time. Returning num tokens assuming gpt-4-0314.")
+        print("Warning: gpt-3.5-turbo-16k may change over time. Returning num tokens assuming gpt-4-0314.")
         return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301")
     elif model == "gpt-4":
         print("Warning: gpt-4 may change over time. Returning num tokens assuming gpt-4-0314.")
@@ -130,16 +130,16 @@ def files():
                                             Provide feedback on the variable and function naming conventions used in the code, evaluating for clarity and consistency.""",
                         },
                     ]
-                    tokens_to_send = num_tokens_from_messages(message_to_send, "gpt-3.5-turbo")
+                    tokens_to_send = num_tokens_from_messages(message_to_send, args.openai_engine)
                     print(f"""{tokens_to_send} prompt tokens for {file}.""")
 
                     if tokens_to_send < int(args.openai_max_tokens):
                         # Sending the code to ChatGPT
                         try:
                             response = openai.ChatCompletion.create(
-                                model="gpt-3.5-turbo-16k",
+                                model=args.openai_engine,
                                 messages=message_to_send,
-                                temperature=float(0.5),
+                                temperature=float(args.openai_temperature),
                                 max_tokens=int(args.openai_max_tokens) - tokens_to_send,
                             )
 
