@@ -107,7 +107,7 @@ def files():
                         {
                             "role": "system",
                             "content": f"""You are an AI language model, capable of providing comprehensive code reviews for code changes in GitHub pull requests.
-                                            Your primary areas of focus include: purpose, functionality, code quality, performance, security, compatibility, and documentation.
+                                            Your primary areas of focus include: purpose, functionality, code quality, performance, security, and documentation.
                                             Your outputs should be formatted as markdown for readability and clarity.""",
                         },
                         {
@@ -120,8 +120,7 @@ def files():
                                             3. Code Quality: How readable and modular is the code? Does it adhere to coding standards? Are variable and function naming conventions followed?
                                             4. Performance: Are there any opportunities for optimization or performance enhancements in the code?
                                             5. Security: Are there any potential security vulnerabilities or risks associated with these changes?
-                                            6. Compatibility: Does this code introduce any breaking changes or incompatibilities with the existing codebase?
-                                            7. Documentation: How is the quality and completeness of comments, commit messages, and documentation updates?
+                                            6. Documentation: How is the quality and completeness of comments, commit messages, and documentation updates?
 
                                             ```{content}```
 
